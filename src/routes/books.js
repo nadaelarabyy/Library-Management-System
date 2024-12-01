@@ -7,7 +7,6 @@ const Sequelize = require("sequelize");
 // Add a book
 router.post('/', async (req, res) => {
     try {
-        console.log(req.body)
         const { title, author, isbn, quantity, shelf_location } = req.body;
         const book = await Book.create({ 
             title, 
@@ -71,53 +70,52 @@ router.get('/search', async (req, res) => {
 });
 
 // Update a book's details
-router.put('/:book_id', async (req, res) => {
-    try {
-        const { book_id } = req.params;  // Extract book_id from URL parameter
-        const { title, author, isbn, quantity, shelfLocation } = req.body;  // Extract the new book details from the request body
+    router.put('/:book_id', async (req, res) => {
+        try {
+            const { book_id } = req.params;  // Extract book_id from URL parameter
+            const { title, author, isbn, quantity, shelf_location } = req.body;  // Extract the new book details from the request body
+            // Find the book by its ID
+            const book = await Book.findByPk(Number(book_id));
 
-        // Find the book by its ID
-        const book = await Book.findByPk(book_id);
+            if (!book) {
+                return res.status(404).json({ error: 'Book not found' });
+            }
 
-        if (!book) {
-            return res.status(404).json({ error: 'Book not found' });
+            // Update the book's details
+            const updatedBook = await book.update({
+                title,
+                author,
+                isbn,
+                quantity,
+                shelf_location
+            });
+
+            res.status(200).json(updatedBook);  // Respond with the updated book details
+        } catch (error) {
+            res.status(500).json({ error: error.message });
         }
+    });
 
-        // Update the book's details
-        const updatedBook = await book.update({
-            title,
-            author,
-            isbn,
-            quantity,
-            shelf_location: shelfLocation,
-        });
+    // Delete a book
+    router.delete('/:book_id', async (req, res) => {
+        try {
+            const { book_id } = req.params;  // Extract book_id from URL parameter
 
-        res.status(200).json(updatedBook);  // Respond with the updated book details
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+            // Find the book by its ID
+            const book = await Book.findByPk(Number(book_id));
 
-// Delete a book
-router.delete('/:book_id', async (req, res) => {
-    try {
-        const { book_id } = req.params;  // Extract book_id from URL parameter
+            if (!book) {
+                return res.status(404).json({ error: 'Book not found' });
+            }
 
-        // Find the book by its ID
-        const book = await Book.findByPk(book_id);
+            // Delete the book
+            await book.destroy();
 
-        if (!book) {
-            return res.status(404).json({ error: 'Book not found' });
+            res.status(200).json({ message: 'Book deleted successfully' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
         }
-
-        // Delete the book
-        await book.destroy();
-
-        res.status(200).json({ message: 'Book deleted successfully' });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+    });
 
 
 module.exports = router;

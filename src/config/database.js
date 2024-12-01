@@ -6,9 +6,14 @@ const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, proces
     dialect: 'postgres',
 });
 
-sequelize
-    .authenticate()
-    .then(() => console.log('Database connected...'))
-    .catch((err) => console.error('Database connection error:', err));
+async () => {
+    try {
+        await sequelize.authenticate();
+        console.log('Database connected...');
+    } catch (err) {
+        console.error('Database connection error:', err);
+    }
+};
 
 module.exports = sequelize;
+
