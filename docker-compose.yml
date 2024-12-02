@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # API service (your Express app)
+  api:
+    build: .
+    container_name: my-api
+    ports:
+      - "3000:3000"  # Expose port 3000 to the host
+    environment:
+      - DB_HOST=db
+      - DB_USER=postgres
+      - DB_PASS=bosta2024  # This should match db's password
+      - DB_NAME=library_db
+      - DB_PORT=5432
+      - REDIS_HOST=redis  # Redis hostname (updated to service name)
+    depends_on:
+      - db
+      - redis  # Ensure Redis is started before API
+    networks:
+      - myapp-network
+
+  # PostgreSQL database service
+  db:
+    image: postgres:13
+    container_name: my-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: bosta2024  # Ensure this matches API password
+      POSTGRES_DB: library_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - myapp-network
+
+  # Redis service
+  redis:
+    image: redis:latest  # Use the latest Redis image
+    container_name: my-redis
+    ports:
+      - "6379:6379"  # Expose Redis default port 6379
+    networks:
+      - myapp-network
+
+# Define a custom network for the services to communicate
+networks:
+  myapp-network:
+    driver: bridge
+
+# Define named volumes for persistent database storage
+volumes:
+  pgdata:
+    driver: local
