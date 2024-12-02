@@ -9,10 +9,11 @@ services:
       - "3000:3000"  # Expose port 3000 to the host
     environment:
       - DB_HOST=db
-      - DB_USER=admin
-      - DB_PASS=password123
+      - DB_USER=postgres
+      - DB_PASS=bosta2024  # This should match db's password
       - DB_NAME=library_db
-      - REDIS_HOST=redis  # Redis hostname
+      - DB_PORT=5432
+      - REDIS_HOST=redis  # Redis hostname (updated to service name)
     depends_on:
       - db
       - redis  # Ensure Redis is started before API
@@ -24,8 +25,8 @@ services:
     image: postgres:13
     container_name: my-db
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password123
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: bosta2024  # Ensure this matches API password
       POSTGRES_DB: library_db
     volumes:
       - pgdata:/var/lib/postgresql/data

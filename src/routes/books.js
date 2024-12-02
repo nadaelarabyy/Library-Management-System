@@ -12,6 +12,7 @@ const client = redis.createClient({
     port: 6379,
 });
 
+
 // Promisify Redis commands
 client.get = promisify(client.GET).bind(client);
 client.setEx = promisify(client.SETEX).bind(client);
