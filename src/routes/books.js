@@ -2,7 +2,46 @@ const express = require('express');
 const Book = require('../models/book');
 const router = express.Router();
 const Sequelize = require("sequelize");
+// caching using redis
+const { promisify } = require('util');
+const redis = require('redis');
+const client = redis.createClient({
+    host: 'localhost',  // Redis server host (ensure it's correct)
+    port: 6379,         // Redis server port (default is 6379)
+});
+client.get = promisify(client.get);  // Promisify the Redis `get` method
+client.setex = promisify(client.setEx);
+// Handle connection events for Redis
+client.on('connect', () => {
+    console.log('Connected to Redis');
+});
 
+client.on('error', (err) => {
+    console.log('Error connecting to Redis:', err);
+});
+
+
+const getBooksFromCache = async (cacheKey) => {
+    try {
+        const cachedResult = await client.get(cacheKey);  // Fetch cached data
+        if (cachedResult) {
+            return JSON.parse(cachedResult);  // Return cached result if it exists
+        }
+        return null;  // Return null if cache is empty
+    } catch (err) {
+        console.error('Redis GET error:', err);
+        return null;  // Return null on error
+    }
+};
+
+// Function to set cache
+const setBooksToCache = async (cacheKey, books) => {
+    try {
+        await client.setEx(cacheKey, 60, JSON.stringify(books));  // Cache with TTL (60 seconds)
+    } catch (err) {
+        console.error('Redis SETEX error:', err);
+    }
+}
 
 // Add a book
 router.post('/', async (req, res) => {
@@ -28,7 +67,8 @@ router.get('/', async (req, res) => {
     try {
         const books = await Book.findAll(
             {
-                attributes: ['book_id', 'title', 'author','isbn', 'quantity', 'shelf_location']
+                attributes: ['book_id', 'title', 'author','isbn', 'quantity', 'shelf_location'],
+                limit: 100,  // Limit results for pagination
             }
         );
         res.status(200).json(books);
@@ -42,6 +82,14 @@ router.get('/search', async (req, res) => {
     try {
         // Destructure the query parameters directly from req.query
         const { title, author, isbn } = req.query;
+
+        const cacheKey = `search:${title || ''}:${author || ''}:${isbn || ''}`;
+        console.log("Cache key: ",cacheKey);
+        // Try to get data from cache
+        const cachedResult = await getBooksFromCache(cacheKey);
+        if (cachedResult) {
+            return res.status(200).json(cachedResult);  // Return cached data
+        }
 
         const whereConditions = {};
 
@@ -61,7 +109,12 @@ router.get('/search', async (req, res) => {
         const books = await Book.findAll({
             attributes: ['book_id', 'title', 'author', 'isbn', 'quantity', 'shelf_location'],
             where: whereConditions, 
+            limit: 100,  // Limit results for pagination
         });
+
+        // Cache the result
+        await setBooksToCache(cacheKey, books);
+
 
         res.status(200).json(books);
     } catch (error) {

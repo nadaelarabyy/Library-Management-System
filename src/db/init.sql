@@ -71,3 +71,15 @@ VALUES
 (8, 8, '2024-11-20', '2024-12-04'),  -- Helen borrows "The Hobbit"
 (9, 9, '2024-11-21', '2024-12-05'),  -- Irene borrows "Brave New World"
 (10, 10, '2024-11-25', '2024-12-09'); -- James borrows "Animal Farm"
+
+-- Add an index on the 'title' column in the books table for fast searches
+CREATE INDEX idx_books_title ON books (title);
+
+-- Add an index on the 'author' column in the books table
+CREATE INDEX idx_books_author ON books (author);
+
+-- Add an index on the 'isbn' column in the books table
+CREATE INDEX idx_books_isbn ON books (isbn);
+
+-- Add an index on the 'name' column in the borrowers table
+CREATE INDEX idx_borrowers_name ON borrower (borrower_name);
