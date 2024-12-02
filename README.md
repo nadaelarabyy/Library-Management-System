@@ -1,4 +1,5 @@
-
+# ERD diagram for the library management system
+![ERD Diagram](./ERD diagram.PNG)
 # Library API
 
 This is a RESTful API built with Express and Sequelize to manage a library system. It handles books, borrowers, and borrowing processes. Basic authentication is implemented for secure access.
