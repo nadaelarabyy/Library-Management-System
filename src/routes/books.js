@@ -5,43 +5,72 @@ const Sequelize = require("sequelize");
 // caching using redis
 const { promisify } = require('util');
 const redis = require('redis');
+
+// Initialize Redis client
 const client = redis.createClient({
-    host: 'localhost',  // Redis server host (ensure it's correct)
-    port: 6379,         // Redis server port (default is 6379)
-});
-client.get = promisify(client.get);  // Promisify the Redis `get` method
-client.setex = promisify(client.setEx);
-// Handle connection events for Redis
-client.on('connect', () => {
-    console.log('Connected to Redis');
+    host: 'localhost',
+    port: 6379,
 });
 
-client.on('error', (err) => {
-    console.log('Error connecting to Redis:', err);
-});
+// Promisify Redis commands
+client.get = promisify(client.GET).bind(client);
+client.setEx = promisify(client.SETEX).bind(client);
 
-
-const getBooksFromCache = async (cacheKey) => {
+// Connect to Redis and handle events
+(async () => {
     try {
-        const cachedResult = await client.get(cacheKey);  // Fetch cached data
-        if (cachedResult) {
-            return JSON.parse(cachedResult);  // Return cached result if it exists
+        if (!client.isOpen) {
+            await client.connect(); // Explicitly connect to Redis
+            console.log('Connected to Redis');
         }
-        return null;  // Return null if cache is empty
     } catch (err) {
-        console.error('Redis GET error:', err);
-        return null;  // Return null on error
+        console.error('Error connecting to Redis:', err);
+    }
+})();
+
+// Handle Redis errors
+client.on('error', (err) => {
+    console.error('Redis error:', err);
+});
+
+// Check Redis connection before performing operations
+const ensureRedisConnected = async () => {
+    console.log("CLIENT: ",client.isOpen)
+    if (!client.isOpen) {
+        await client.connect();
+        console.log('Redis reconnected');
     }
 };
 
-// Function to set cache
+const getWithTimeout = async (key, timeoutMs) => {
+    return Promise.race([
+        client.GET(key),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Redis get timed out')), timeoutMs)),
+    ]);
+};
+
+// Get data from cache
+const getBooksFromCache = async (cacheKey) => {
+    try {
+        await ensureRedisConnected(); // Ensure the connection is open
+        const cachedResult = await getWithTimeout(cacheKey, 5000);
+        console.warn("CACHE RESULT: ", cachedResult)
+        return cachedResult ? JSON.parse(cachedResult) : null;
+    } catch (err) {
+        console.error('Redis GET error:', err);
+        return null;
+    }
+};
+
+// Set data to cache
 const setBooksToCache = async (cacheKey, books) => {
     try {
-        await client.setEx(cacheKey, 60, JSON.stringify(books));  // Cache with TTL (60 seconds)
+        await ensureRedisConnected(); // Ensure the connection is open
+        await client.SETEX(cacheKey, 60, JSON.stringify(books));
     } catch (err) {
         console.error('Redis SETEX error:', err);
     }
-}
+};
 
 // Add a book
 router.post('/', async (req, res) => {
